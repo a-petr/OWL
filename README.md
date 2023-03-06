@@ -1,4 +1,4 @@
-# Orthogonally Weighted L2/L1 (OWL) regularizer
+# (OWL) Orthogonally Weighted L_{21}  regularizer
 
 Multi-task Lasso model trained with Orthogonally Weighted L21 (OWL) regularizer. The model optimizes the following objective function:
 
