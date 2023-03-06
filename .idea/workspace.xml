@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="efdb1cb2-94e5-4b37-8b03-4246075dbdb1" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="2HKyfmk3d7x91JD9eRvqsAXVWJZ" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="RunManager" selected="Python.basealgorithm (1)">
+    <configuration name="basealgorithm (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="OWL" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/basealgorithm.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="basealgorithm" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="cleaning the code for posting" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/basealgorithm.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Doctests in OrthogonallyWeightedLasso (1)" type="tests" factoryName="Doctests" temporary="true" nameIsGenerated="true">
+      <module name="cleaning the code for posting" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/basealgorithm.py" />
+      <option name="CLASS_NAME" value="OrthogonallyWeightedLasso" />
+      <option name="METHOD_NAME" value="" />
+      <option name="FOLDER_NAME" value="" />
+      <option name="TEST_TYPE" value="TEST_CLASS" />
+      <option name="PATTERN" value="" />
+      <option name="USE_PATTERN" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Doctests in OrthogonallyWeightedLasso" type="tests" factoryName="Doctests" temporary="true" nameIsGenerated="true">
+      <module name="cleaning the code for posting" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/basealgorithm.py" />
+      <option name="CLASS_NAME" value="OrthogonallyWeightedLasso" />
+      <option name="METHOD_NAME" value="" />
+      <option name="FOLDER_NAME" value="" />
+      <option name="TEST_TYPE" value="TEST_CLASS" />
+      <option name="PATTERN" value="" />
+      <option name="USE_PATTERN" value="false" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.basealgorithm (1)" />
+        <item itemvalue="Python.basealgorithm" />
+        <item itemvalue="Python tests.Doctests in OrthogonallyWeightedLasso" />
+        <item itemvalue="Python tests.Doctests in OrthogonallyWeightedLasso (1)" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="efdb1cb2-94e5-4b37-8b03-4246075dbdb1" name="Default Changelist" comment="" />
+      <created>1668048177940</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1668048177940</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="184" y="131" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1670504904310">
+      <screen x="0" y="25" width="1440" height="875" />
+    </state>
+    <state x="184" y="131" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.25.1440.875@0.25.1440.875" timestamp="1670504904310" />
+    <state width="1419" height="269" key="GridCell.Tab.0.bottom" timestamp="1670562783093">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1419" height="269" key="GridCell.Tab.0.bottom/-1440.540.1440.900/0.25.3440.1415@-1440.540.1440.900" timestamp="1670537012226" />
+    <state width="1419" height="269" key="GridCell.Tab.0.bottom/0.0.1440.900@0.0.1440.900" timestamp="1670562783093" />
+    <state width="3419" height="131" key="GridCell.Tab.0.bottom/0.0.3440.1440@0.0.3440.1440" timestamp="1670515551015" />
+    <state width="1346" height="131" key="GridCell.Tab.0.bottom/0.25.1440.875@0.25.1440.875" timestamp="1670504994476" />
+    <state width="1419" height="269" key="GridCell.Tab.0.center" timestamp="1670562783091">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1419" height="269" key="GridCell.Tab.0.center/-1440.540.1440.900/0.25.3440.1415@-1440.540.1440.900" timestamp="1670537012225" />
+    <state width="1419" height="269" key="GridCell.Tab.0.center/0.0.1440.900@0.0.1440.900" timestamp="1670562783091" />
+    <state width="3419" height="131" key="GridCell.Tab.0.center/0.0.3440.1440@0.0.3440.1440" timestamp="1670515551015" />
+    <state width="1346" height="131" key="GridCell.Tab.0.center/0.25.1440.875@0.25.1440.875" timestamp="1670504994475" />
+    <state width="1419" height="269" key="GridCell.Tab.0.left" timestamp="1670562783088">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1419" height="269" key="GridCell.Tab.0.left/-1440.540.1440.900/0.25.3440.1415@-1440.540.1440.900" timestamp="1670537012224" />
+    <state width="1419" height="269" key="GridCell.Tab.0.left/0.0.1440.900@0.0.1440.900" timestamp="1670562783088" />
+    <state width="3419" height="131" key="GridCell.Tab.0.left/0.0.3440.1440@0.0.3440.1440" timestamp="1670515551015" />
+    <state width="1346" height="131" key="GridCell.Tab.0.left/0.25.1440.875@0.25.1440.875" timestamp="1670504994475" />
+    <state width="1419" height="269" key="GridCell.Tab.0.right" timestamp="1670562783091">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1419" height="269" key="GridCell.Tab.0.right/-1440.540.1440.900/0.25.3440.1415@-1440.540.1440.900" timestamp="1670537012225" />
+    <state width="1419" height="269" key="GridCell.Tab.0.right/0.0.1440.900@0.0.1440.900" timestamp="1670562783091" />
+    <state width="3419" height="131" key="GridCell.Tab.0.right/0.0.3440.1440@0.0.3440.1440" timestamp="1670515551015" />
+    <state width="1346" height="131" key="GridCell.Tab.0.right/0.25.1440.875@0.25.1440.875" timestamp="1670504994475" />
+    <state x="542" y="138" key="SettingsEditor" timestamp="1678130734575">
+      <screen x="0" y="0" width="3440" height="1440" />
+    </state>
+    <state x="542" y="138" key="SettingsEditor/0.0.3440.1440@0.0.3440.1440" timestamp="1678130734574" />
+    <state x="227" y="109" key="SettingsEditor/0.25.1440.875@0.25.1440.875" timestamp="1670504888476" />
+    <state x="385" y="196" width="670" height="676" key="search.everywhere.popup" timestamp="1670432911111">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="385" y="196" width="670" height="676" key="search.everywhere.popup/0.0.1440.900@0.0.1440.900" timestamp="1670432911111" />
+  </component>
+</project>
