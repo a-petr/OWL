@@ -2,7 +2,10 @@
 
 Multi-task Lasso model trained with Orthogonally Weighted L21 (OWL) regularizer. The model optimizes the following objective function:
 
-$$\frac{1}{2n} ||Y - AX||_{\text{Fro}}^2 + \alpha * ||W(W^TW)^{-1}||_{2,1} $$
+$$\frac{1}{2n} ||Y - AX||\_{\text{Fro}}^2 + \alpha  ||W(W^TW)^{-1}||\_{2,1} $$
+
+where $||W||\_{2,1}$ is defined as the sum of norms of each row: $\sum_i \sqrt(\sum\_j W\_{ij}^2)$. 
+
 
 For more information on this model, please refer to "Orthogonally weighted $L_{2,1}$  regularization for rank-aware joint sparse recovery: algorithm and analysis" by A. Petrosyan, K. Pieper, H. Tran.
 
