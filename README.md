@@ -19,7 +19,6 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
 - `warm_start` (bool, default=False): When set to True, reuse the solution of the previous call to fit as initialization, otherwise, just erase the previous solution.
 - `verbose` (bool, default=False): When set to True, prints at every 50 steps.
 - `gamma_tol` (float, default=10e-4): Sets a limit on how small gamma can get.
-__
 ## Attributes
 
 - `coef_` (ndarray of shape (n_targets, n_features)): Parameter vector (W in the cost function formula). If a 1D y is passed in at fit (non multi-task usage), `coef_` is then a 1D array. Note that `coef_` stores the transpose of `X`, `X.T`.
@@ -27,7 +26,7 @@ __
 ## Usage
 
 ```python
-from source.basealgorithm import OrthogonallyWeightedL21
+from base import OrthogonallyWeightedL21
 
 owl = OrthogonallyWeightedL21(alpha=0.1,
                               noise_level=0.0001,
