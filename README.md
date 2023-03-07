@@ -34,8 +34,9 @@ owl = OrthogonallyWeightedL21(alpha=0.1,
                               normalize=False,
                               tol=1e-2,
                               max_iter=50000,
-                              verbose=True)A = np.array([[0., 1., 2.], [3., 4., 5.]])
+                              verbose=True)
 
+A = np.array([[0., 1., 2.], [3., 4., 5.]])
 Y = np.array([[-1.,  1.], [-1.,  4.]])
 owl.fit(A, Y)
 print(clf.coef_)
