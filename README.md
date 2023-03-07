@@ -1,6 +1,6 @@
 # (OWL) Orthogonally Weighted L_{21}  regularizer
 
-Multi-task Lasso model trained with Orthogonally Weighted L21 (OWL) regularizer. The model optimizes the following objective function:
+Multi-task Lasso model trained with Orthogonally Weighted L_{2,1} (OWL) regularizer. The model optimizes the following objective function:
 
 $$\frac{1}{2n} ||Y - AX||\_{\text{Fro}}^2 + \alpha  ||W(W^TW)^{-1}||\_{2,1} $$
 
@@ -29,8 +29,13 @@ __
 ```python
 from source.basealgorithm import OrthogonallyWeightedL21
 
-owl = OrthogonallyWeightedL21(alpha=0.1, noise_level=0, normalize=True)
-A = np.array([[0., 1., 2.], [3., 4., 5.]])
+owl = OrthogonallyWeightedL21(alpha=0.1,
+                              noise_level=0.0001,
+                              normalize=False,
+                              tol=1e-2,
+                              max_iter=50000,
+                              verbose=True)A = np.array([[0., 1., 2.], [3., 4., 5.]])
+
 Y = np.array([[-1.,  1.], [-1.,  4.]])
 owl.fit(A, Y)
 print(clf.coef_)
