@@ -4,16 +4,16 @@ Multi-task Lasso model trained with Orthogonally Weighted L_{2,1} (OWL) regulari
 The model optimizes the following objective function:
 
 $$ 
-\frac{1}{2 \alpha} ||Y - AZ||\_{\text{Fro}}^2 + ||Z(Z^TZ)^{-1}||\_{2,1}
+\frac{1}{2 \alpha} ||Y - AZ||\_{\text{Fro}}^2 + ||Z(Z^TZ)^{-1/2}||\_{2,1}
 $$
 
 where $||Z||\_{2,1}$ is defined as the sum of norms of each row: $\sum_i \sqrt{\sum\_j Z\_{ij}^2}$. 
 
-The class OrthogonallyWeightedL21 implements a direct variable metric proximal gradient iterative minimization algorithm with optional choice of $\alpha$ based on a discrepancy principle.
-The class OrthogonallyWeightedL21Continuation implements a numerical continuation strategy for the relaxed problem
+The class `OrthogonallyWeightedL21` implements a direct variable metric proximal gradient iterative minimization algorithm with optional choice of $\alpha$ based on a discrepancy principle.
+The class `OrthogonallyWeightedL21Continuation` implements a numerical continuation strategy for the relaxed problem
 
 $$ 
-\frac{1}{2 \alpha} ||Y - AZ||\_{\text{Fro}}^2 + ||Z(\gamma I + (1-\gamma)Z^TZ)^{-1}||\_{2,1}
+\frac{1}{2 \alpha} ||Y - AZ||\_{\text{Fro}}^2 + ||Z(\gamma I + (1-\gamma)Z^TZ)^{-1/2}||\_{2,1}
 $$
 
 for a sequence of $\gamma \in (0,1]$ with $\gamma \to 0$ to improve robustness.
@@ -25,12 +25,12 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
 ## Parameters
 
 - `alpha` (float, default=None):
-  Regularizing parameter.
-  Defaults to None in which case an analytic formula is used.
-  If noise_level is set, alpha will only be used for initialization, and then chosen according to a discrepancy principle.
+  Regularization parameter $\alpha$.
+  Defaults to None in which case a heuristic formula is used.
+  If noise_level is set, the value will only be used for initialization, and then adapted according to a discrepancy principle.
 - `noise_level` (float, default=None):
   Estimated noise level $\delta$.
-  If set, alpha will be adapted until %\tau_1 \delta \leq ||Y - AX|| \leq \tau_2 \delta$.
+  If set to a positive value, $\alpha$ will be adapted until $\tau_1 \delta \leq ||Y - AX|| \leq \tau_2 \delta$.
 - `max_iter` (int, default=1000):
   The maximum number of iterations, including failed updates.
 - `tol` (float, default=1e-4):
@@ -42,8 +42,11 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
   If True, the regressors A will be normalized before regression by subtracting the mean and dividing by the l2-norm.
   Warning: this decreases the spark of A.
 - `warm_start` (bool, default=False):
-  When set to True, reuse the solution of the previous call to fit as initialization, otherwise, just erase the previous solution.
-- `verbose` (int, default=False): Print information on updates. When set to True, prints at every steps. When set to a integer N, prints every N steps.
+  When set to `True`, reuse the solution of the previous call to fit as initialization.
+  Otherwise, erase the previous solution and perform random or zero initialization.
+- `verbose` (int, default=False): Print information on updates.
+  When set to `True`, prints at every step.
+  When set to a integer `N`, prints every `N` steps.
 
 ## Attributes
 
@@ -66,5 +69,5 @@ owl = OrthogonallyWeightedL21(noise_level=0.0001,
 A = np.array([[0., 1., 2.], [3., 4., 5.]])
 Y = np.array([[-1.,  1.], [-1.,  4.]])
 owl.fit(A, Y)
-print(clf.coef_)
+print(owl.coef_)
 ```
