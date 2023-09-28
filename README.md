@@ -1,42 +1,73 @@
 # (OWL) Orthogonally Weighted L_{2,1}  regularizer
 
-Multi-task Lasso model trained with Orthogonally Weighted L_{2,1} (OWL) regularizer. The model optimizes the following objective function:
+Multi-task Lasso model trained with Orthogonally Weighted L_{2,1} (OWL) regularizer.
+The model optimizes the following objective function:
 
-$$\frac{1}{2} ||Y - AX||\_{\text{Fro}}^2 + \alpha  ||W(W^TW)^{-1}||\_{2,1} $$
+$$ 
+\frac{1}{2 \alpha} ||Y - AZ||\_{\text{Fro}}^2 + ||Z(Z^TZ)^{-1/2}||\_{2,1}
+$$
 
-where $||W||\_{2,1}$ is defined as the sum of norms of each row: $\sum_i \sqrt{\sum\_j W\_{ij}^2}$. 
+where $||Z||\_{2,1}$ is defined as the sum of norms of each row: $\sum_i \sqrt{\sum\_j Z\_{ij}^2}$. 
 
-For more information on this model, please refer to "Orthogonally weighted $L_{2,1}$  regularization for rank-aware joint sparse recovery: algorithm and analysis" by A. Petrosyan, K. Pieper, H. Tran.
+The class `OrthogonallyWeightedL21` implements a direct variable metric proximal gradient iterative minimization algorithm with optional choice of $\alpha$ based on a discrepancy principle.
+The class `OrthogonallyWeightedL21Continuation` implements a numerical continuation strategy for the relaxed problem
+
+$$ 
+\frac{1}{2 \alpha} ||Y - AZ||\_{\text{Fro}}^2 + ||Z(\gamma I + (1-\gamma)Z^TZ)^{-1/2}||\_{2,1}
+$$
+
+for a sequence of $\gamma \in (0,1]$ with $\gamma \to 0$ to improve robustness.
+
+For more information on this model, please refer to "Orthogonally weighted $L_{2,1}$ regularization for rank-aware joint sparse recovery: algorithm and analysis" by A. Petrosyan, K. Pieper, H. Tran.
+
+
 
 ## Parameters
 
-- `alpha` (float, default=False): Constant that multiplies the regularizing term. Defaults to False in which case an analytic formula is used.
-- `normalize` (bool, default=False): If True, the regressors A will be normalized before regression by subtracting the mean and dividing by the l2-norm. Warning: this decreases the spark of A.         
-- `max_iter` (int, default=1000): The maximum number of iterations.
-- `noise_level` (float, default=1.0): Estimated noise level.
-- `tol` (float, default=1e-4): The tolerance for the optimization: if the updates are smaller than `tol`, the optimization code checks the dual gap for optimality and continues until it is smaller than `tol`.
-- `warm_start` (bool, default=False): When set to True, reuse the solution of the previous call to fit as initialization, otherwise, just erase the previous solution.
-- `verbose` (bool, default=False): When set to True, prints at every 50 steps.
-- `gamma_tol` (float, default=10e-4): Sets a limit on how small gamma can get.
+- `alpha` (float, default=None):
+  Regularization parameter $\alpha$.
+  Defaults to None in which case a heuristic formula is used.
+  If noise_level is set, the value will only be used for initialization, and then adapted according to a discrepancy principle.
+- `noise_level` (float, default=None):
+  Estimated noise level $\delta$.
+  If set to a positive value, $\alpha$ will be adapted until $\tau_1 \delta \leq ||Y - AX|| \leq \tau_2 \delta$.
+- `max_iter` (int, default=1000):
+  The maximum number of iterations, including failed updates.
+- `tol` (float, default=1e-4):
+  The tolerance for the optimization based on the objective functional.
+  The optimization code checks a termination criterion for optimality and continues until it is smaller than `tol`.
+- `gamma_tol` (float, default=1e-6):
+  The smallest value of the continuation parameter $\gamma$ that will be used (only OrthogonallyWeightedL21Continuation).
+- `normalize` (bool, default=False):
+  If True, the regressors A will be normalized before regression by subtracting the mean and dividing by the l2-norm.
+  Warning: this decreases the spark of A.
+- `warm_start` (bool, default=False):
+  When set to `True`, reuse the solution of the previous call to fit as initialization.
+  Otherwise, erase the previous solution and perform random or zero initialization.
+- `verbose` (int, default=False): Print information on updates.
+  When set to `True`, prints at every step.
+  When set to a integer `N`, prints every `N` steps.
 
 ## Attributes
 
-- `coef_` (ndarray of shape (n_targets, n_features)): Parameter vector (W in the cost function formula). If a 1D y is passed in at fit (non multi-task usage), `coef_` is then a 1D array. Note that `coef_` stores the transpose of `X`, `X.T`.
+- `coef_` (ndarray of shape (n_targets, n_features)):
+Parameter vector (Z in the cost function formula).
+If a 1D data array Y is passed in at fit (non multi-task usage), `coef_` is then a 1D array.
+Note that `coef_` stores the transpose of `Z`, `Z.T`.
 
 ## Usage
 
 ```python
 from base import OrthogonallyWeightedL21
 
-owl = OrthogonallyWeightedL21(alpha=0.1,
-                              noise_level=0.0001,
+owl = OrthogonallyWeightedL21(noise_level=0.0001,
                               normalize=False,
                               tol=1e-2,
-                              max_iter=50000,
+                              max_iter=5000,
                               verbose=True)
 
 A = np.array([[0., 1., 2.], [3., 4., 5.]])
 Y = np.array([[-1.,  1.], [-1.,  4.]])
 owl.fit(A, Y)
-print(clf.coef_)
+print(owl.coef_)
 ```

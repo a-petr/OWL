@@ -25,6 +25,9 @@ def _prox(Z, weight, eta):
 
 
 def _fidelity(A, Z, Y):
+    """
+    Computes the fidelity or fit of the data
+    """
     return np.linalg.norm(A @ Z - Y)
 
 def _regularizer(Z, weight):
@@ -34,13 +37,43 @@ def _regularizer(Z, weight):
     return np.sum(_reweighted_row_norms(Z, weight))
 
 def _obj(fidelity, regularizer, alpha):
+    """
+    Computes the objective function for minimization
+    """
     return (1 / (2 * alpha)) * fidelity ** 2 + regularizer
 
 def _objective(A, Z, Y, weight, alpha):
     return _obj(_fidelity(A, Z, Y), _regularizer(Z, weight))
 
 
+def compute_weight(Z):
+    """
+    compute the weight matrix in a way that guarantees symmetry for weight
+    and gives an estimate of the reciprocal condition number
+
+    weight_inv = Z.transpose() @ Z
+    weight = linalg.inv(weight_inv)
+    """
+    
+    n_tasks = Z.shape[1]
+    
+    R, p = linalg.qr(Z, mode='r', pivoting=True)
+    R = R[0:n_tasks,:]
+    RPt = R[:, np.argsort(p)]
+    weight_inv = RPt.transpose() @ RPt
+    PRinv = linalg.inv(R)[p, :]
+    weight = PRinv @ PRinv.transpose()
+
+    # indicator for condition number
+    rcond = np.abs(R[n_tasks-1,n_tasks-1]) / np.abs(R[0,0])
+    
+    return weight_inv, weight, rcond
+
+
 def check_discrepancy_principle(alpha, fidelity, noise_level):
+    """
+    Check if the discrepancy principle is fulfilled, and suggest a new value for alpha
+    """
     kappa1 = 0.75
     kappa2 = 1.5
     if fidelity > kappa2 * noise_level:
@@ -56,36 +89,15 @@ def check_discrepancy_principle(alpha, fidelity, noise_level):
     return alpha_new
 
 
-def compute_weight(Z, gamma=0):
-    
-    n_tasks = Z.shape[1]
-    
-    R, p = linalg.qr(Z, mode='r', pivoting=True)
-    R = R[0:n_tasks,:]
-    RPt = R[:, np.argsort(p)]
-    weight_inv = RPt.transpose() @ RPt
-    PRinv = linalg.inv(R)[p, :]
-    weight = PRinv @ PRinv.transpose()
-
-    #weight_inv_alt = Z.transpose() @ Z
-    #weight_alt = linalg.inv(weight_inv_alt)
-    #print(weight_alt - weight)
-
-    # indicator for condition number
-    quot = np.abs(R[n_tasks-1,n_tasks-1]) / np.abs(R[0,0])
-    
-    return weight_inv, weight, quot
-
-
-## why is this coordinate descent??
+## why is this called coordinate descent??
 def reweighted_coordinate_descent_multi_task(
         Z,
         A,
         Y,
-        max_iter,
+        alpha,
         noise_level,
+        max_iter,
         tol,
-        alpha=False,
         verbose=True):
     
     n_features = A.shape[1]
@@ -95,19 +107,20 @@ def reweighted_coordinate_descent_multi_task(
     initial_step_size = 1 / (np.linalg.norm(A.transpose() @ A, 2) * 2)
     step_size = initial_step_size
 
-    fidelity_at_last_alpha = False # internal variable for alpha adjustment
+    if noise_level:
+        fidelity_at_last_alpha = False # internal variable for alpha adjustment
     
     # initial weights
     try:
         weight_inv, weight, _ = compute_weight(Z)
     except:
         raise ValueError("Singular weight matrix in initial step. "
-              "Choose different initialization, or consider using the OrthogonallyWeightedL21Continued algorithm.")
+              "Choose different initialization, or consider using the OrthogonallyWeightedL21Continuation algorithm.")
 
     # initialize alpha if not specified
     if not alpha:
         gradZ = A.transpose() @ Y
-        alpha = 0.5 * np.max(_reweighted_row_norms(gradZ, weight))
+        alpha = 0.1 * np.max(_reweighted_row_norms(gradZ, weight))
     
     fidelity = _fidelity(A, Z, Y)
     regularizer = _regularizer(Z, weight)
@@ -140,7 +153,7 @@ def reweighted_coordinate_descent_multi_task(
 
         # update weights and objective if weight exists
         try:
-            weight_inv, weight, quot = compute_weight(Z)
+            weight_inv, weight, rcond = compute_weight(Z)
             
             fidelity = _fidelity(A, Z, Y)
             regularizer = _regularizer(Z, weight)
@@ -160,15 +173,19 @@ def reweighted_coordinate_descent_multi_task(
             weight = weight_old
             weight_inv = weight_inv_old
 
-            if pred >= 0 or step_size < 1e-10:
+            if pred >= 0 or step_size * rcond < 1e-10:
                 ## error or just return what we have?
-                print('failed to converge: pred=%1.2e, stepsize=%1.2e' % (pred, step_size))
+                print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1/rcond))
+                print('Consider using the OrthogonallyWeightedL21Continuation algorithm.')
                 finished = True
         else:
             # proximal step is accepted
 
-            reference_objective = _obj(max(fidelity, noise_level), regularizer, alpha);
-            if obj_res < tol * reference_objective:
+            reference_objective = _obj(fidelity, regularizer, alpha);
+            if not noise_level and obj_res < tol * reference_objective:
+                # termination criterion is fulfilled
+                finished = True
+            elif obj_res < tol * reference_objective:
                 # termination criterion for the proximal gradient method is fulfilled
                 # check if we need to update alpha to fulfill the discrepancy principle
                 alpha_new = check_discrepancy_principle(alpha, fidelity, noise_level)
@@ -198,31 +215,61 @@ def reweighted_coordinate_descent_multi_task(
                 elif (current_objective - old_objective) / pred < 1 / 3:
                     step_size = step_size * (2 / 3)
 
-        if verbose and (k % 1 == 0 or finished):
-            #print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()), 'a=%1.2e' % (alpha),
-            #      'fit=%1.2e, obj=%1.2e, obj_err=%1.2e' % (fidelity, current_objective, -pred / step_size),
-            #      'stepsize=%1.1e' % (step_size / initial_step_size))
-            print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()), 'a=%1.2e' % (alpha),
-                  'fit=%1.2e, reg=%1.2e, obj_err=%1.2e' % (fidelity, regularizer, -pred / step_size),
-                  'stepsize=%1.1e' % (step_size / initial_step_size))
+        if verbose and (k % verbose == 0 or finished):
+            print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()),
+                  'alpha=%1.1e' % (alpha),
+                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res),
+                  'step=%1.1e' % (step_size / initial_step_size))
         if finished:
             break
 
-    if verbose and quot <= 1e-3:
-        print('condition number of Z too big %1.2e, stagnation likely' % (1/quot))
+    if verbose and rcond <= 1e-3:
+        print('Estimated condition number of Z: %1.2e, stagnation likely' % (1/rcond))
+        print('Consider different initialization or using the OrthogonallyWeightedL21Continuation algorithm.')
         
     return Z
 
-def reweighted_coordinate_descent_multi_task_continued(
+
+def compute_weight_gamma(Z, gamma):
+    """
+    compute the weight matrix in a way that guarantees symmetry for weight
+    and gives an estimate of the reciprocal condition number
+
+    weight_inv = gamma * I + (1-gamma) * Z.transpose() @ Z
+    weight = linalg.inv(weight_inv)
+    """
+    
+    n_tasks = Z.shape[1]
+    I = np.eye(n_tasks, n_tasks)
+    weight_inv = gamma * I + (1-gamma) * Z.transpose() @ Z
+
+    L = linalg.cholesky(weight_inv)
+    Linv = linalg.inv(L)
+    weight = Linv @ Linv.transpose()
+    
+    # indicator for condition number
+    rcond = (np.min(np.diag(L)) / np.max(np.diag(L))) ** 2
+
+    return weight_inv, weight, rcond
+
+
+def gamma_continuation_schedule(gamma, gamma_tol):
+    """
+    provide the next continuation parameter
+    """
+    return max(gamma_tol, gamma - 0.1) #gamma / 1.5
+
+
+def reweighted_coordinate_descent_multi_task_continuation(
         Z,
         A,
         Y,
-        max_iter,
+        alpha,
         noise_level,
+        max_iter,
         tol,
-        alpha=False,
-        verbose=True,
-        gamma_tol=1e-6):
+        gamma_tol=1e-6,
+        verbose=True):
     
     n_features = A.shape[1]
     n_tasks = Y.shape[1]
@@ -233,18 +280,18 @@ def reweighted_coordinate_descent_multi_task_continued(
     # initial step size
     initial_step_size = 1 / (np.linalg.norm(A.transpose() @ A, 2) * 2)
     step_size = initial_step_size
-
-    I = np.eye(n_tasks, n_tasks)
-
-    # initial alpha
-    if not alpha:
-        gradZ = A.transpose() @ (A @ Z - Y)
-        alpha = 0.5 * np.max(_reweighted_row_norms(gradZ, I))
-
+    
     # initial weights
-    weight_inv = (1 - gamma) * Z.transpose() @ Z + gamma * I
-    weight = np.linalg.inv(weight_inv)
-    current_objective = _objective(A, Z, Y, weight, alpha)
+    weight_inv, weight, _ = compute_weight_gamma(Z, gamma)
+
+    # initialize alpha if not specified
+    if not alpha:
+        gradZ = A.transpose() @ Y
+        alpha = 0.1 * np.max(_reweighted_row_norms(gradZ, weight))
+    
+    fidelity = _fidelity(A, Z, Y)
+    regularizer = _regularizer(Z, weight)
+    current_objective = _obj(fidelity, regularizer, alpha)
 
     for k in range(max_iter):
         Z_old = Z
@@ -255,57 +302,99 @@ def reweighted_coordinate_descent_multi_task_continued(
         # update Z
         Lam = np.zeros(weight.shape)
         reweighted_row_norms = _reweighted_row_norms(Z, weight)
-        for f_iter in range(n_features):
-            if reweighted_row_norms[f_iter] == 0:
-                continue
-            Lam += Z[f_iter:f_iter + 1, :].transpose() @ Z[f_iter:f_iter + 1, :] / reweighted_row_norms[f_iter]
-        gradZ = (A.transpose() @ (A @ Z - Y)) @ weight_inv - (1 - gamma) * alpha * Z @ weight @ Lam
+
+        nonzero_rows = np.nonzero(np.squeeze(reweighted_row_norms))[0]
+        for f_iter in nonzero_rows:
+            Lam += (1 - gamma) * Z[f_iter:f_iter + 1, :].transpose() @ Z[f_iter:f_iter + 1, :] / reweighted_row_norms[f_iter]
+
+        gradZ = (1/alpha) * (A.transpose() @ (A @ Z - Y)) @ weight_inv - Z @ weight @ Lam
         Z = Z - step_size * gradZ
-        Z = _prox(Z, weight, step_size * alpha)
+        Z = _prox(Z, weight, step_size)
 
-        # update weights
-        weight_inv = (1 - gamma) * Z.transpose() @ Z + gamma * I
-        weight = np.linalg.inv(weight_inv)
-        current_objective = _objective(A, Z, Y, weight, alpha)
+        # compute the predicted decrease
+        pred = np.sum(_reweighted_row_inners(Z - Z_old, gradZ, weight)) + \
+            np.sum(_reweighted_row_norms(Z, weight) - _reweighted_row_norms(Z_old, weight))
 
-        if np.isnan(current_objective) or np.isinf(current_objective) or current_objective > old_objective:
+        # functional residual
+        obj_res = -pred / step_size
+
+        # update weights and objective
+        weight_inv, weight, rcond = compute_weight_gamma(Z, gamma)
+
+        fidelity = _fidelity(A, Z, Y)
+        regularizer = _regularizer(Z, weight)
+        current_objective = _obj(fidelity, regularizer, alpha)
+        failed_update = np.isnan(current_objective) or np.isinf(current_objective)
+
+        # decide if to accept step or to update hyperparameters
+        finished = False
+        kappa = 0.001
+        if failed_update or current_objective - old_objective > kappa * pred:
+            # discard current proximal step (backtracking line-search)
             step_size = step_size / 2
             Z = Z_old
             current_objective = old_objective
             weight = weight_old
             weight_inv = weight_inv_old
+
+            if pred >= 0 or step_size * rcond < 1e-10:
+                print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1/rcond))
+                finished = True
         else:
-            pred = np.sum(_reweighted_row_inners(Z - Z_old, gradZ, weight)) + \
-                   alpha * (np.sum(_reweighted_row_norms(Z, weight) - _reweighted_row_norms(Z_old, weight)))
-            fidelity = _fidelity(A, Z, Y)
-            if -pred / step_size < tol * (1 / 2) * max(fidelity, noise_level) ** 2:
-                finished = False
-                if fidelity > 1.5 * noise_level:
-                    alpha = 0.9 * alpha
-                elif fidelity < 0.75 * noise_level and gamma > gamma_tol:
-                    # dot increase alpha if gamma \approx 0, since it does not always lead to a increase in fidel
-                    alpha = 1.2 * alpha
+            # proximal step is accepted
+            gamma_update = False
+
+            reference_objective = _obj(fidelity, regularizer, alpha);
+            if not noise_level and obj_res < tol * reference_objective:
+                # termination criterion is fulfilled
+                # check if we need to decrease gamma
+                if gamma <= gamma_tol:
+                    finished = True
                 else:
-                    finished = (gamma <= gamma_tol)
-                    gamma = max(1e-6, gamma - 0.1)
-
-                # update with new hyperparameters
-                weight_inv = (1 - gamma) * Z.transpose() @ Z + gamma * I
-                weight = np.linalg.inv(weight_inv)
-                current_objective = _objective(A, Z, Y, weight, alpha)
-
-                if finished:
-                    break
-
+                    gamma = gamma_continuation_schedule(gamma, gamma_tol)
+                    gamma_update = True
+            elif obj_res < tol * reference_objective:
+                # termination criterion for the proximal gradient method is fulfilled
+                # check if we need to update alpha to fulfill the discrepancy principle
+                alpha_new = check_discrepancy_principle(alpha, fidelity, noise_level)
+                if alpha == alpha_new or gamma <= gamma_tol:
+                    # discrepancy principle fulfilled
+                    # check if we need to decrease gamma
+                    if gamma <= gamma_tol:
+                        finished = True
+                    else:
+                        gamma = gamma_continuation_schedule(gamma, gamma_tol)
+                        gamma_update = True
+                else: 
+                    alpha = alpha_new
+                    # update with new hyperparameter alpha for next proximal update
+                    current_objective = _obj(fidelity, regularizer, alpha)
             else:
+                # continue iterating the proximal gradient
+                # Performance optimization: try to get a better guess for the next stepsize
+                #  depending on the agreement of functional and model
                 if (current_objective - old_objective) / pred > 3 / 4:
                     step_size = step_size * 1.5
-                elif (current_objective - old_objective) / pred < 1 / 2:
+                elif (current_objective - old_objective) / pred < 1 / 3:
                     step_size = step_size * (2 / 3)
 
-        if verbose and k % 50 == 0:
-            print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()), 'a=%1.2e, g=%1.2e' % (alpha, gamma),
-                  'fit=%1.2e, obj=%1.2e, obj_err=%1.2e' % (fidelity, current_objective, -pred / step_size),
-                  'stepsize=%1.1e' % (step_size / initial_step_size))
+            if gamma_update: 
+                # gamma was updated: update weights and objective
+                weight_inv, weight, rcond = compute_weight_gamma(Z, gamma)
 
+                regularizer = _regularizer(Z, weight)
+                current_objective = _obj(fidelity, regularizer, alpha)
+
+        if verbose and (k % verbose == 0 or finished):
+            print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()),
+                  'alpha=%1.1e gamma=%1.1e' % (alpha, gamma),
+                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res),
+                  'step=%1.1e' % (step_size / initial_step_size))
+
+        if finished:
+            break
+        
     return Z
+
+
+
