@@ -16,11 +16,13 @@ class OrthogonallyWeightedL21:
             tol=1e-4,
             warm_start=False,
             normalize=False,
+            data_SVD_cutoff=None,
             verbose=False
     ):
         self.alpha = alpha
         self.max_iter = max_iter
         self.normalize = normalize
+        self.data_SVD_cutoff = data_SVD_cutoff
         self.tol = tol
         self.warm_start = warm_start
         self.noise_level = noise_level
@@ -29,27 +31,23 @@ class OrthogonallyWeightedL21:
 
     def fit(self, A, Y):
         if self.normalize:
-            A_mean = A.mean(axis=0)
-            A_std = A.std(axis=0)
-            A_std[A_std == 0] = A_mean[A_std == 0]
-            Y_mean = Y.mean(axis=0)
-
-            A -= A_mean[None, :]
-            A /= A_std[None, :]
-            Y -= Y_mean[None, :]
+            A, Y = ut.normalize_matrix_and_data(A, Y)
 
         n_samples, n_features = A.shape
         n_targets = Y.shape[1]
+
+        if self.data_SVD_cutoff is not None:
+            Y, Q = ut.data_SVD_preprocess(Y, self.data_SVD_cutoff)
+            n_targets = Y.shape[1]
 
         if not self.warm_start:
             #self.coef_ = np.zeros((n_features, n_targets), dtype=A.dtype.type)
             # random intialization
             self.coef_ = np.random.randn(n_features, n_targets)
-            # ensure the random matrix is well conditioned
-            #self.coef_ = np.linalg.svd(owl.coef_, full_matrices=False)[0]
 
+        ### TODO: the readme specifies that _coef should be Z.T, we do not use transpose.
 
-        self.coef_ = ut.reweighted_coordinate_descent_multi_task(
+        self.coef_ = ut.reweighted_l21_multi_task(
             self.coef_,
             A,
             Y,
@@ -58,6 +56,9 @@ class OrthogonallyWeightedL21:
             self.max_iter,
             self.tol,
             self.verbose)
+
+        if self.data_SVD_cutoff is not None:
+            self.coef_ = self.coef_ @ Q
 
         return self
 
@@ -72,11 +73,13 @@ class OrthogonallyWeightedL21Continuation:
             gamma_tol=1e-6,
             warm_start=False,
             normalize=False,
+            data_SVD_cutoff=None,
             verbose=False
     ):
         self.alpha = alpha
         self.max_iter = max_iter
         self.normalize = normalize
+        self.data_SVD_cutoff = data_SVD_cutoff
         self.tol = tol
         self.gamma_tol = gamma_tol
         self.warm_start = warm_start
@@ -86,24 +89,19 @@ class OrthogonallyWeightedL21Continuation:
 
     def fit(self, A, Y):
         if self.normalize:
-            A_mean = A.mean(axis=0)
-            A_std = A.std(axis=0)
-            A_std[A_std == 0] = A_mean[A_std == 0]
-            Y_mean = Y.mean(axis=0)
-
-            A -= A_mean[None, :]
-            A /= A_std[None, :]
-            Y -= Y_mean[None, :]
+            A, Y = ut.normalize_matrix_and_data(A, Y)
 
         n_samples, n_features = A.shape
         n_targets = Y.shape[1]
 
+        if self.data_SVD_cutoff is not None:
+            Y, Q = ut.data_SVD_preprocess(Y, self.data_SVD_cutoff)
+            n_targets = Y.shape[1]
+
         if not self.warm_start:
             self.coef_ = np.zeros((n_features, n_targets), dtype=A.dtype.type)
-            # random intialization
-            #self.coef_ = np.random.randn(n_features, n_targets)
 
-        self.coef_ = ut.reweighted_coordinate_descent_multi_task_continuation(
+        self.coef_ = ut.reweighted_l21_multi_task_continuation(
             self.coef_,
             A,
             Y,
@@ -113,6 +111,9 @@ class OrthogonallyWeightedL21Continuation:
             self.tol,
             self.gamma_tol,
             self.verbose)
+
+        if self.data_SVD_cutoff is not None:
+            self.coef_ = self.coef_ @ Q
 
         return self
 
