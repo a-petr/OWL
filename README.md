@@ -43,7 +43,7 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
   Warning: this decreases the spark of A.
 - `data_SVD_cutoff` (float, default=None):
   If set to a non-negative number, a singular value decomposition will be preformed
-  and the data vector `Y` will be replaced with a `Y_reduced` of dimension `(n_features, n_targets_reduced)`
+  and the data vector `Y` will be replaced with a full rank `Y_reduced` of dimension `(n_features, n_targets_reduced)`
   with `Y` approximating `Y_reduced @ Q` for some orthogonal `Q`
   with $|| Y_{reduced} Q - Y ||$ smaller than `data_SVD_cutoff`.
   The problem will be solved on the reduced representation with `n_targets_reduced`.
@@ -60,7 +60,7 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
   Parameter vector (Z in the cost function formula).
   If a 1D data array Y is passed in at fit (non multi-task usage), `coef_` is then a 1D array.
   
-[//]: # scilab has (ndarray of shape (n_targets, n_features)) and 'Note that `coef_` stores the transpose of `Z`, `Z.T`.'
+[//]: # scilab has: ndarray of shape (n_targets, n_features) and 'Note that coef_ stores the transpose of Z, Z.T.'
 
 ## Usage
 

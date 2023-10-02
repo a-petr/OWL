@@ -139,7 +139,7 @@ def reweighted_l21_multi_task(
     n_targets = Y.shape[1]
     
     # initial step size
-    initial_step_size = 1 / (np.linalg.norm(A.transpose() @ A, 2) * 2)
+    initial_step_size = 1 / (np.linalg.norm(A, 2) ** 2)
     step_size = initial_step_size
 
     if noise_level:
@@ -313,7 +313,7 @@ def reweighted_l21_multi_task_continuation(
     gamma = 1
 
     # initial step size
-    initial_step_size = 1 / (np.linalg.norm(A.transpose() @ A, 2) * 2)
+    initial_step_size = 1 / (np.linalg.norm(A, 2) ** 2)
     step_size = initial_step_size
     
     # initial weights
