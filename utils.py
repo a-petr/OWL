@@ -2,6 +2,42 @@ import numpy as np
 from scipy import linalg
 
 
+def normalize_matrix_and_data(A, Y):
+    """
+    Normalize the matrix A and data vector Y
+    """
+    A_mean = A.mean(axis=0)
+    A_std = A.std(axis=0)
+    A_std[A_std == 0] = A_mean[A_std == 0]
+    Y_mean = Y.mean(axis=0)
+
+    ## this overwrites the memory of A and Y (use copy()?)
+    A -= A_mean[None, :]
+    A /= A_std[None, :]
+    Y -= Y_mean[None, :]
+    
+    return A, Y
+
+def data_SVD_preprocess(Y, cutoff):
+    """
+    Use the singular value decomposition to find a decomposition
+    
+    Y = Y_reduced @ Q
+
+    Y_reduced has dimension n_features, n_tasks_reduced and singular values bigger than cutoff
+    Q has dimension n_tasks_reduced, n_tasks
+    """
+
+    U, s, V = linalg.svd(Y, full_matrices=False)
+
+    tail_error = np.flip(np.sqrt(np.cumsum(np.flip(s ** 2))))
+
+    Y_reduced = U[:, tail_error > cutoff] * s[tail_error > cutoff]
+    Q = V[tail_error > cutoff, :]
+
+    return Y_reduced, Q
+
+
 def _reweighted_row_inners(Z1, Z2, weight):
     """
     Computes the W-inner products between rows of Z1 and Z2
@@ -46,7 +82,7 @@ def _objective(A, Z, Y, weight, alpha):
     return _obj(_fidelity(A, Z, Y), _regularizer(Z, weight))
 
 
-def compute_weight(Z):
+def _compute_weight(Z):
     """
     compute the weight matrix in a way that guarantees symmetry for weight
     and gives an estimate of the reciprocal condition number
@@ -55,17 +91,17 @@ def compute_weight(Z):
     weight = linalg.inv(weight_inv)
     """
     
-    n_tasks = Z.shape[1]
+    n_targets = Z.shape[1]
     
     R, p = linalg.qr(Z, mode='r', pivoting=True)
-    R = R[0:n_tasks,:]
+    R = R[0:n_targets,:]
     RPt = R[:, np.argsort(p)]
     weight_inv = RPt.transpose() @ RPt
     PRinv = linalg.inv(R)[p, :]
     weight = PRinv @ PRinv.transpose()
 
     # indicator for condition number
-    rcond = np.abs(R[n_tasks-1,n_tasks-1]) / np.abs(R[0,0])
+    rcond = np.abs(R[n_targets-1,n_targets-1]) / np.abs(R[0,0])
     
     return weight_inv, weight, rcond
 
@@ -89,8 +125,7 @@ def check_discrepancy_principle(alpha, fidelity, noise_level):
     return alpha_new
 
 
-## why is this called coordinate descent??
-def reweighted_coordinate_descent_multi_task(
+def reweighted_l21_multi_task(
         Z,
         A,
         Y,
@@ -101,10 +136,10 @@ def reweighted_coordinate_descent_multi_task(
         verbose=True):
     
     n_features = A.shape[1]
-    n_tasks = Y.shape[1]
+    n_targets = Y.shape[1]
     
     # initial step size
-    initial_step_size = 1 / (np.linalg.norm(A.transpose() @ A, 2) * 2)
+    initial_step_size = 1 / (np.linalg.norm(A, 2) ** 2)
     step_size = initial_step_size
 
     if noise_level:
@@ -112,7 +147,7 @@ def reweighted_coordinate_descent_multi_task(
     
     # initial weights
     try:
-        weight_inv, weight, _ = compute_weight(Z)
+        weight_inv, weight, _ = _compute_weight(Z)
     except:
         raise ValueError("Singular weight matrix in initial step. "
               "Choose different initialization, or consider using the OrthogonallyWeightedL21Continuation algorithm.")
@@ -153,7 +188,7 @@ def reweighted_coordinate_descent_multi_task(
 
         # update weights and objective if weight exists
         try:
-            weight_inv, weight, rcond = compute_weight(Z)
+            weight_inv, weight, rcond = _compute_weight(Z)
             
             fidelity = _fidelity(A, Z, Y)
             regularizer = _regularizer(Z, weight)
@@ -230,7 +265,7 @@ def reweighted_coordinate_descent_multi_task(
     return Z
 
 
-def compute_weight_gamma(Z, gamma):
+def _compute_weight_gamma(Z, gamma):
     """
     compute the weight matrix in a way that guarantees symmetry for weight
     and gives an estimate of the reciprocal condition number
@@ -239,8 +274,8 @@ def compute_weight_gamma(Z, gamma):
     weight = linalg.inv(weight_inv)
     """
     
-    n_tasks = Z.shape[1]
-    I = np.eye(n_tasks, n_tasks)
+    n_targets = Z.shape[1]
+    I = np.eye(n_targets, n_targets)
     weight_inv = gamma * I + (1-gamma) * Z.transpose() @ Z
 
     L = linalg.cholesky(weight_inv)
@@ -253,14 +288,14 @@ def compute_weight_gamma(Z, gamma):
     return weight_inv, weight, rcond
 
 
-def gamma_continuation_schedule(gamma, gamma_tol):
+def _gamma_continuation_schedule(gamma, gamma_tol):
     """
     provide the next continuation parameter
     """
     return max(gamma_tol, gamma - 0.1) #gamma / 1.5
 
 
-def reweighted_coordinate_descent_multi_task_continuation(
+def reweighted_l21_multi_task_continuation(
         Z,
         A,
         Y,
@@ -272,17 +307,17 @@ def reweighted_coordinate_descent_multi_task_continuation(
         verbose=True):
     
     n_features = A.shape[1]
-    n_tasks = Y.shape[1]
+    n_targets = Y.shape[1]
 
     # initial gamma
     gamma = 1
 
     # initial step size
-    initial_step_size = 1 / (np.linalg.norm(A.transpose() @ A, 2) * 2)
+    initial_step_size = 1 / (np.linalg.norm(A, 2) ** 2)
     step_size = initial_step_size
     
     # initial weights
-    weight_inv, weight, _ = compute_weight_gamma(Z, gamma)
+    weight_inv, weight, _ = _compute_weight_gamma(Z, gamma)
 
     # initialize alpha if not specified
     if not alpha:
@@ -319,7 +354,7 @@ def reweighted_coordinate_descent_multi_task_continuation(
         obj_res = -pred / step_size
 
         # update weights and objective
-        weight_inv, weight, rcond = compute_weight_gamma(Z, gamma)
+        weight_inv, weight, rcond = _compute_weight_gamma(Z, gamma)
 
         fidelity = _fidelity(A, Z, Y)
         regularizer = _regularizer(Z, weight)
@@ -351,7 +386,7 @@ def reweighted_coordinate_descent_multi_task_continuation(
                 if gamma <= gamma_tol:
                     finished = True
                 else:
-                    gamma = gamma_continuation_schedule(gamma, gamma_tol)
+                    gamma = _gamma_continuation_schedule(gamma, gamma_tol)
                     gamma_update = True
             elif obj_res < tol * reference_objective:
                 # termination criterion for the proximal gradient method is fulfilled
@@ -363,7 +398,7 @@ def reweighted_coordinate_descent_multi_task_continuation(
                     if gamma <= gamma_tol:
                         finished = True
                     else:
-                        gamma = gamma_continuation_schedule(gamma, gamma_tol)
+                        gamma = _gamma_continuation_schedule(gamma, gamma_tol)
                         gamma_update = True
                 else: 
                     alpha = alpha_new
@@ -380,7 +415,7 @@ def reweighted_coordinate_descent_multi_task_continuation(
 
             if gamma_update: 
                 # gamma was updated: update weights and objective
-                weight_inv, weight, rcond = compute_weight_gamma(Z, gamma)
+                weight_inv, weight, rcond = _compute_weight_gamma(Z, gamma)
 
                 regularizer = _regularizer(Z, weight)
                 current_objective = _obj(fidelity, regularizer, alpha)
