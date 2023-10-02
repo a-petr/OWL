@@ -59,8 +59,6 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
 - `coef_` (ndarray of shape (n_features, n_targets)):
   Parameter vector (Z in the cost function formula).
   If a 1D data array Y is passed in at fit (non multi-task usage), `coef_` is then a 1D array.
-  
-[//]: # scilab has: ndarray of shape (n_targets, n_features) and 'Note that coef_ stores the transpose of Z, Z.T.'
 
 ## Usage
 
