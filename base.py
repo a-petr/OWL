@@ -41,7 +41,7 @@ class OrthogonallyWeightedL21:
             n_targets = Y.shape[1]
 
         if not self.warm_start:
-            #self.coef_ = np.zeros((n_features, n_targets), dtype=A.dtype.type)
+            # self.coef_ = np.zeros((n_features, n_targets), dtype=A.dtype.type)
             # random intialization
             self.coef_ = np.random.randn(n_features, n_targets)
 
@@ -123,12 +123,14 @@ if __name__ == "__main__":
                                   tol=1e-4,
                                   max_iter=5000,
                                   verbose=True)
-    A = np.array([[1., 1., 0], [1., 0., 1.]])
-    Y = np.array([[2., 0.], [1., 1.]])
+    A = np.array([[0.2, 1., 0., 0., 0.],
+                  [0.2, 0., 1., 0., 0.],
+                  [0., 0., 0., 1., 0.],
+                  [0., 0., 0., 0., 1.]])
+    X = np.array([[0., 0., 0, 1, 1], [0., 0., 0, 1, -1]]).transpose()
     ## this problem has many solutions
-    X1 = np.array([[1., 1.], [1., -1.], [0., 0.]])
-    X2 = np.array([[0., 0.], [2., 0.], [1., 1.]])
-    X3 = np.array([[2., 0.], [0., 0.], [-1., 1.]])
+    Y = A @ X
+
     owl.fit(A, Y)
     print('Z = ', owl.coef_)
     print('singular values = ', np.linalg.svd(owl.coef_, full_matrices=False)[1])
