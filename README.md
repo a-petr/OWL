@@ -36,6 +36,8 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
 - `tol` (float, default=1e-4):
   The tolerance for the optimization based on the objective functional.
   The optimization code checks a termination criterion for optimality and continues until it is smaller than `tol`.
+- `gamma` (float, default=1):
+  The initial value of the continuation parameter $\gamma$ that will be used (only OrthogonallyWeightedL21Continuation).
 - `gamma_tol` (float, default=1e-6):
   The smallest value of the continuation parameter $\gamma$ that will be used (only OrthogonallyWeightedL21Continuation).
 - `normalize` (bool, default=False):
