@@ -66,15 +66,19 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
 
 ```python
 from base import OrthogonallyWeightedL21
+import numpy as np
 
 owl = OrthogonallyWeightedL21(noise_level=0.0001,
-                              normalize=False,
-                              tol=1e-2,
+                              tol=1e-4,
                               max_iter=5000,
                               verbose=True)
-
-A = np.array([[0., 1., 2.], [3., 4., 5.]])
-Y = np.array([[-1.,  1.], [-1.,  4.]])
+A = np.array([[0.2, 1., 0., 0., 0.],
+              [0.2, 0., 1., 0., 0.],
+              [0., 0., 0., 1., 0.],
+              [0., 0., 0., 0., 1.]])
+X = np.array([[0., 0., 0, 1, 1], [0., 0., 0, 1, -1]]).transpose()
+## this problem has many solutions
+Y = A @ X
 owl.fit(A, Y)
 print(owl.coef_)
 ```
