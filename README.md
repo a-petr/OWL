@@ -68,17 +68,22 @@ For more information on this model, please refer to "Orthogonally weighted $L_{2
 from base import OrthogonallyWeightedL21
 import numpy as np
 
-owl = OrthogonallyWeightedL21(noise_level=0.0001,
-                              tol=1e-4,
-                              max_iter=5000,
-                              verbose=True)
-A = np.array([[0.2, 1., 0., 0., 0.],
-              [0.2, 0., 1., 0., 0.],
-              [0., 0., 0., 1., 0.],
-              [0., 0., 0., 0., 1.]])
-X = np.array([[0., 0., 0, 1, 1], [0., 0., 0, 1, -1]]).transpose()
-## this problem has many solutions
-Y = A @ X
-owl.fit(A, Y)
-print(owl.coef_)
+  owl = OrthogonallyWeightedL21(noise_level=0.0001,
+                                tol=1e-4,
+                                max_iter=5000,
+                                verbose=True)
+  
+  A = np.array([[0.2, 1., 0., 0., 0.],
+                [0.2, 0., 1., 0., 0.],
+                [0., 0., 0., 1., 0.],
+                [0., 0., 0., 0., 1.]])
+  
+  X = np.array([[0., 0., 0, 1, 1], [0., 0., 0, 1, -1]]).transpose()
+  Y = A @ X
+
+  owl.fit(A, Y)
+  
+  print('Z = ', owl.coef_)
+  print('singular values = ', np.linalg.svd(owl.coef_, full_matrices=False)[1])
+  print('fit = ', np.linalg.norm(A @ owl.coef_ - Y))
 ```
