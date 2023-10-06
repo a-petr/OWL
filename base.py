@@ -1,10 +1,10 @@
 # Authors: Armenak Petrosyan <apetrosyan3@gatech.edu>
 #          Konstantin Pieper <pieperk@ornl.gov>
-#          Hoang Tran <tranh@ornl.gov>
+#          Hoang Tran <tranha@ornl.gov>
 
 
 import numpy as np
-import utils as ut
+import OWL.utils as ut
 
 
 class OrthogonallyWeightedL21:
@@ -37,15 +37,13 @@ class OrthogonallyWeightedL21:
         n_targets = Y.shape[1]
 
         if self.data_SVD_cutoff is not None:
-            Y, Q = ut.data_SVD_preprocess(Y, self.data_SVD_cutoff)
+            Y, Q = ut.data_SVD_preprocess(Y, self.data_SVD_cutoff, self.verbose)
             n_targets = Y.shape[1]
 
         if not self.warm_start:
             #self.coef_ = np.zeros((n_features, n_targets), dtype=A.dtype.type)
             # random intialization
             self.coef_ = np.random.randn(n_features, n_targets)
-
-        ### TODO: the readme specifies that _coef should be Z.T, we do not use transpose.
 
         self.coef_ = ut.reweighted_l21_multi_task(
             self.coef_,
@@ -70,6 +68,7 @@ class OrthogonallyWeightedL21Continuation:
             noise_level=None,
             max_iter=1000,
             tol=1e-4,
+            gamma=1,
             gamma_tol=1e-6,
             warm_start=False,
             normalize=False,
@@ -81,6 +80,7 @@ class OrthogonallyWeightedL21Continuation:
         self.normalize = normalize
         self.data_SVD_cutoff = data_SVD_cutoff
         self.tol = tol
+        self.gamma = gamma
         self.gamma_tol = gamma_tol
         self.warm_start = warm_start
         self.noise_level = noise_level
@@ -95,7 +95,7 @@ class OrthogonallyWeightedL21Continuation:
         n_targets = Y.shape[1]
 
         if self.data_SVD_cutoff is not None:
-            Y, Q = ut.data_SVD_preprocess(Y, self.data_SVD_cutoff)
+            Y, Q = ut.data_SVD_preprocess(Y, self.data_SVD_cutoff, self.verbose)
             n_targets = Y.shape[1]
 
         if not self.warm_start:
@@ -109,6 +109,7 @@ class OrthogonallyWeightedL21Continuation:
             self.noise_level,
             self.max_iter,
             self.tol,
+            self.gamma,
             self.gamma_tol,
             self.verbose)
 

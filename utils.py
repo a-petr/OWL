@@ -18,22 +18,30 @@ def normalize_matrix_and_data(A, Y):
     
     return A, Y
 
-def data_SVD_preprocess(Y, cutoff):
+def data_SVD_preprocess(Y, cutoff, verbose=False):
     """
     Use the singular value decomposition to find a decomposition
     
     Y = Y_reduced @ Q
 
-    Y_reduced has dimension n_features, n_tasks_reduced and singular values bigger than cutoff
-    Q has dimension n_tasks_reduced, n_tasks
+    Y_reduced has dimension n_features, n_targets_reduced and singular values bigger than cutoff
+    Q has dimension n_targets_reduced, n_targets
     """
 
     U, s, V = linalg.svd(Y, full_matrices=False)
 
     tail_error = np.flip(np.sqrt(np.cumsum(np.flip(s ** 2))))
 
-    Y_reduced = U[:, tail_error > cutoff] * s[tail_error > cutoff]
-    Q = V[tail_error > cutoff, :]
+    if np.any(tail_error <= cutoff):
+        Y_reduced = U[:, tail_error > cutoff] * s[tail_error > cutoff]
+        Q = V[tail_error > cutoff, :]
+
+        if verbose:
+            print('reduced data size from %d to %d with error %1.2f' % \
+                  (Y.shape[1], Y_reduced.shape[1], np.max(tail_error[tail_error <= cutoff])))
+    else:
+        Y_reduced = Y
+        Q = np.eye(Y.shape[1])
 
     return Y_reduced, Q
 
@@ -137,10 +145,6 @@ def reweighted_l21_multi_task(
     
     n_features = A.shape[1]
     n_targets = Y.shape[1]
-    
-    # initial step size
-    initial_step_size = 1 / (np.linalg.norm(A, 2) ** 2)
-    step_size = initial_step_size
 
     if noise_level:
         fidelity_at_last_alpha = False # internal variable for alpha adjustment
@@ -156,7 +160,11 @@ def reweighted_l21_multi_task(
     if not alpha:
         gradZ = A.transpose() @ Y
         alpha = 0.1 * np.max(_reweighted_row_norms(gradZ, weight))
-    
+
+    # initial step size
+    reference_step_size = alpha / (np.linalg.norm(A, 2) ** 2)
+    step_size = reference_step_size
+
     fidelity = _fidelity(A, Z, Y)
     regularizer = _regularizer(Z, weight)
     current_objective = _obj(fidelity, regularizer, alpha)
@@ -237,8 +245,8 @@ def reweighted_l21_multi_task(
                     # discrepancy principle fulfilled
                     finished = True
 
+                reference_step_size *= alpha_new / alpha
                 alpha = alpha_new
-                    
                 # update with new hyperparameter alpha for next proximal update
                 current_objective = _obj(fidelity, regularizer, alpha)
             else:
@@ -254,7 +262,7 @@ def reweighted_l21_multi_task(
             print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()),
                   'alpha=%1.1e' % (alpha),
                   'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res),
-                  'step=%1.1e' % (step_size / initial_step_size))
+                  'step=%1.1e' % (step_size / reference_step_size))
         if finished:
             break
 
@@ -303,6 +311,7 @@ def reweighted_l21_multi_task_continuation(
         noise_level,
         max_iter,
         tol,
+        gamma_0=1,
         gamma_tol=1e-6,
         verbose=True):
     
@@ -310,11 +319,7 @@ def reweighted_l21_multi_task_continuation(
     n_targets = Y.shape[1]
 
     # initial gamma
-    gamma = 1
-
-    # initial step size
-    initial_step_size = 1 / (np.linalg.norm(A, 2) ** 2)
-    step_size = initial_step_size
+    gamma = gamma_0
     
     # initial weights
     weight_inv, weight, _ = _compute_weight_gamma(Z, gamma)
@@ -323,6 +328,10 @@ def reweighted_l21_multi_task_continuation(
     if not alpha:
         gradZ = A.transpose() @ Y
         alpha = 0.1 * np.max(_reweighted_row_norms(gradZ, weight))
+
+    # initial step size
+    reference_step_size = alpha / (np.linalg.norm(A, 2) ** 2)
+    step_size = reference_step_size
     
     fidelity = _fidelity(A, Z, Y)
     regularizer = _regularizer(Z, weight)
@@ -401,6 +410,8 @@ def reweighted_l21_multi_task_continuation(
                         gamma = _gamma_continuation_schedule(gamma, gamma_tol)
                         gamma_update = True
                 else: 
+
+                    reference_step_size *= alpha_new / alpha
                     alpha = alpha_new
                     # update with new hyperparameter alpha for next proximal update
                     current_objective = _obj(fidelity, regularizer, alpha)
@@ -424,7 +435,7 @@ def reweighted_l21_multi_task_continuation(
             print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()),
                   'alpha=%1.1e gamma=%1.1e' % (alpha, gamma),
                   'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res),
-                  'step=%1.1e' % (step_size / initial_step_size))
+                  'step=%1.1e' % (step_size / reference_step_size))
 
         if finished:
             break
