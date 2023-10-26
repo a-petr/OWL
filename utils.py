@@ -21,7 +21,7 @@ def normalize_matrix_and_data(A, Y):
 def data_SVD_preprocess(Y, cutoff, verbose=False):
     """
     Use the singular value decomposition to find a decomposition
-    
+
     Y = Y_reduced @ Q
 
     Y_reduced has dimension n_features, n_targets_reduced and singular values bigger than cutoff
@@ -114,18 +114,21 @@ def _compute_weight(Z):
     return weight_inv, weight, rcond
 
 
-def check_discrepancy_principle(alpha, fidelity, noise_level):
+def check_discrepancy_principle(alpha, fidelity, noise_level, regularizer):
     """
     Check if the discrepancy principle is fulfilled, and suggest a new value for alpha
     """
-    kappa1 = 0.75
-    kappa2 = 1.5
+    kappa1 = 0.8
+    kappa2 = 1.25
+
+    alpha_stepsize = .5;
+    
     if fidelity > kappa2 * noise_level:
         # decrease alpha to improve fit
-        alpha_new = 0.9 * alpha
-    elif fidelity < kappa1 * noise_level:
+        alpha_new = alpha * (1 - alpha_stepsize * (1 - noise_level / fidelity))
+    elif fidelity < kappa1 * noise_level and regularizer > 0:
         # increase alpha to improve regularization
-        alpha_new = 1.2 * alpha
+        alpha_new = alpha * (1 - alpha_stepsize * (fidelity / noise_level - 1))
     else:
         # discrepancy principle fulfilled
         alpha_new = alpha
@@ -180,8 +183,8 @@ def reweighted_l21_multi_task(
         reweighted_row_norms = _reweighted_row_norms(Z, weight)
 
         nonzero_rows = np.nonzero(np.squeeze(reweighted_row_norms))[0]
-        for f_iter in nonzero_rows:
-            Lam += Z[f_iter:f_iter + 1, :].transpose() @ Z[f_iter:f_iter + 1, :] / reweighted_row_norms[f_iter]
+        nz_row_norms = reweighted_row_norms[nonzero_rows, :]
+        Lam = Z[nonzero_rows, :].transpose() @ (Z[nonzero_rows, :] / nz_row_norms)
 
         gradZ = (1/alpha) * (A.transpose() @ (A @ Z - Y)) @ weight_inv - Z @ weight @ Lam
         Z = Z - step_size * gradZ
@@ -208,7 +211,7 @@ def reweighted_l21_multi_task(
             
         finished = False        
         kappa = 0.001
-        if failed_update or current_objective - old_objective > kappa * pred:
+        if failed_update or (current_objective - old_objective > kappa * pred and obj_res > 1e-14):
             # discard current proximal step (backtracking line-search)
             step_size = step_size / 2
             Z = Z_old
@@ -216,7 +219,7 @@ def reweighted_l21_multi_task(
             weight = weight_old
             weight_inv = weight_inv_old
 
-            if pred >= 0 or step_size * rcond < 1e-10:
+            if pred >= 0 or step_size * rcond < 1e-14:
                 ## error or just return what we have?
                 print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1/rcond))
                 print('Consider using the OrthogonallyWeightedL21Continuation algorithm.')
@@ -231,7 +234,7 @@ def reweighted_l21_multi_task(
             elif obj_res < tol * reference_objective:
                 # termination criterion for the proximal gradient method is fulfilled
                 # check if we need to update alpha to fulfill the discrepancy principle
-                alpha_new = check_discrepancy_principle(alpha, fidelity, noise_level)
+                alpha_new = check_discrepancy_principle(alpha, fidelity, noise_level, regularizer)
 
                 if alpha_new > alpha:
                     if fidelity_at_last_alpha and fidelity <= fidelity_at_last_alpha:
@@ -259,9 +262,10 @@ def reweighted_l21_multi_task(
                     step_size = step_size * (2 / 3)
 
         if verbose and (k % verbose == 0 or finished):
-            print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()),
+            support = np.nonzero((Z * Z).sum(axis=1))[0]
+            print('%6d: %3d' % (k, len(support)),
                   'alpha=%1.1e' % (alpha),
-                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res),
+                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res/reference_objective),
                   'step=%1.1e' % (step_size / reference_step_size))
         if finished:
             break
@@ -286,13 +290,18 @@ def _compute_weight_gamma(Z, gamma):
     I = np.eye(n_targets, n_targets)
     weight_inv = gamma * I + (1-gamma) * Z.transpose() @ Z
 
-    L = linalg.cholesky(weight_inv)
-    Linv = linalg.inv(L)
-    weight = Linv @ Linv.transpose()
+    try:
+        L = linalg.cholesky(weight_inv)
+        Linv = linalg.inv(L)
+        weight = Linv @ Linv.transpose()
+        # indicator for condition number
+        rcond = (np.min(np.diag(L)) / np.max(np.diag(L))) ** 2
+    except:
+        U, s, V = linalg.svd(weight_inv, full_matrices=False)
+        weight = U @ np.diag(1 / s) @ U.transpose()
+        rcond = np.min(s) / np.max(s)
+        print(s)
     
-    # indicator for condition number
-    rcond = (np.min(np.diag(L)) / np.max(np.diag(L))) ** 2
-
     return weight_inv, weight, rcond
 
 
@@ -300,7 +309,8 @@ def _gamma_continuation_schedule(gamma, gamma_tol):
     """
     provide the next continuation parameter
     """
-    return max(gamma_tol, gamma - 0.1) #gamma / 1.5
+    #return max(gamma_tol, gamma - 0.1)
+    return max(gamma_tol, gamma / np.sqrt(10))
 
 
 def reweighted_l21_multi_task_continuation(
@@ -327,7 +337,7 @@ def reweighted_l21_multi_task_continuation(
     # initialize alpha if not specified
     if not alpha:
         gradZ = A.transpose() @ Y
-        alpha = 0.1 * np.max(_reweighted_row_norms(gradZ, weight))
+        alpha = 0.2 * np.max(_reweighted_row_norms(gradZ, weight))
 
     # initial step size
     reference_step_size = alpha / (np.linalg.norm(A, 2) ** 2)
@@ -344,13 +354,12 @@ def reweighted_l21_multi_task_continuation(
         weight_inv_old = weight_inv
 
         # update Z
-        Lam = np.zeros(weight.shape)
         reweighted_row_norms = _reweighted_row_norms(Z, weight)
 
         nonzero_rows = np.nonzero(np.squeeze(reweighted_row_norms))[0]
-        for f_iter in nonzero_rows:
-            Lam += (1 - gamma) * Z[f_iter:f_iter + 1, :].transpose() @ Z[f_iter:f_iter + 1, :] / reweighted_row_norms[f_iter]
-
+        nz_row_norms = reweighted_row_norms[nonzero_rows, :]
+        Lam = (1 - gamma) * Z[nonzero_rows, :].transpose() @ (Z[nonzero_rows, :] / nz_row_norms)
+        
         gradZ = (1/alpha) * (A.transpose() @ (A @ Z - Y)) @ weight_inv - Z @ weight @ Lam
         Z = Z - step_size * gradZ
         Z = _prox(Z, weight, step_size)
@@ -373,7 +382,7 @@ def reweighted_l21_multi_task_continuation(
         # decide if to accept step or to update hyperparameters
         finished = False
         kappa = 0.001
-        if failed_update or current_objective - old_objective > kappa * pred:
+        if failed_update or (current_objective - old_objective > kappa * pred and obj_res > 1e-14):
             # discard current proximal step (backtracking line-search)
             step_size = step_size / 2
             Z = Z_old
@@ -381,7 +390,7 @@ def reweighted_l21_multi_task_continuation(
             weight = weight_old
             weight_inv = weight_inv_old
 
-            if pred >= 0 or step_size * rcond < 1e-10:
+            if pred >= 0 or step_size * rcond < 1e-14:
                 print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1/rcond))
                 finished = True
         else:
@@ -400,7 +409,7 @@ def reweighted_l21_multi_task_continuation(
             elif obj_res < tol * reference_objective:
                 # termination criterion for the proximal gradient method is fulfilled
                 # check if we need to update alpha to fulfill the discrepancy principle
-                alpha_new = check_discrepancy_principle(alpha, fidelity, noise_level)
+                alpha_new = check_discrepancy_principle(alpha, fidelity, noise_level, regularizer)
                 if alpha == alpha_new or gamma <= gamma_tol:
                     # discrepancy principle fulfilled
                     # check if we need to decrease gamma
@@ -432,9 +441,10 @@ def reweighted_l21_multi_task_continuation(
                 current_objective = _obj(fidelity, regularizer, alpha)
 
         if verbose and (k % verbose == 0 or finished):
-            print('%6d: %3d' % (k, ((Z * Z).sum(axis=1) > 1.e-4).sum()),
+            support = np.nonzero((Z * Z).sum(axis=1))[0]
+            print('%6d: %3d' % (k, len(support)),
                   'alpha=%1.1e gamma=%1.1e' % (alpha, gamma),
-                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res),
+                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res/reference_objective),
                   'step=%1.1e' % (step_size / reference_step_size))
 
         if finished:
