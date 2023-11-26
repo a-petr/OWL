@@ -11,12 +11,13 @@ def normalize_matrix_and_data(A, Y):
     A_std[A_std == 0] = A_mean[A_std == 0]
     Y_mean = Y.mean(axis=0)
 
-    ## this overwrites the memory of A and Y (use copy()?)
+    # this overwrites the memory of A and Y (use copy()?)
     A -= A_mean[None, :]
     A /= A_std[None, :]
     Y -= Y_mean[None, :]
-    
+
     return A, Y
+
 
 def data_SVD_preprocess(Y, cutoff, verbose=False):
     """
@@ -28,7 +29,7 @@ def data_SVD_preprocess(Y, cutoff, verbose=False):
     Q has dimension n_targets_reduced, n_targets
     """
 
-    U, s, V = linalg.svd(Y, full_matrices=False)
+    U, s, V = np.linalg.svd(Y, full_matrices=False)
 
     tail_error = np.flip(np.sqrt(np.cumsum(np.flip(s ** 2))))
 
@@ -37,8 +38,8 @@ def data_SVD_preprocess(Y, cutoff, verbose=False):
         Q = V[tail_error > cutoff, :]
 
         if verbose:
-            print('reduced data size from %d to %d with error %1.2f' % \
-                  (Y.shape[1], Y_reduced.shape[1], np.max(tail_error[tail_error <= cutoff])))
+            print(f'reduced data size from {Y.shape[1]:.2f} to {Y_reduced.shape[1]:.} '
+                  f'with error {np.max(tail_error[tail_error <= cutoff]):.2f}')
     else:
         Y_reduced = Y
         Q = np.eye(Y.shape[1])
@@ -53,11 +54,13 @@ def _reweighted_row_inners(Z1, Z2, weight):
     prod = np.expand_dims(np.sum((Z1 @ weight) * Z2, axis=1), axis=1)
     return prod
 
+
 def _reweighted_row_norms(Z, weight):
     """
     Computes the W-norm of a matrix
     """
     return np.sqrt(_reweighted_row_inners(Z, Z, weight))
+
 
 def _prox(Z, weight, eta):
     """
@@ -74,11 +77,13 @@ def _fidelity(A, Z, Y):
     """
     return np.linalg.norm(A @ Z - Y)
 
+
 def _regularizer(Z, weight):
     """
     Computes the weighted l_{1,2} norm
     """
     return np.sum(_reweighted_row_norms(Z, weight))
+
 
 def _obj(fidelity, regularizer, alpha):
     """
@@ -86,8 +91,9 @@ def _obj(fidelity, regularizer, alpha):
     """
     return (1 / (2 * alpha)) * fidelity ** 2 + regularizer
 
+
 def _objective(A, Z, Y, weight, alpha):
-    return _obj(_fidelity(A, Z, Y), _regularizer(Z, weight))
+    return _obj(_fidelity(A, Z, Y), _regularizer(Z, weight), alpha)
 
 
 def _compute_weight(Z):
@@ -98,19 +104,19 @@ def _compute_weight(Z):
     weight_inv = Z.transpose() @ Z
     weight = linalg.inv(weight_inv)
     """
-    
+
     n_targets = Z.shape[1]
-    
+
     R, p = linalg.qr(Z, mode='r', pivoting=True)
-    R = R[0:n_targets,:]
+    R = R[0:n_targets, :]
     RPt = R[:, np.argsort(p)]
     weight_inv = RPt.transpose() @ RPt
     PRinv = linalg.inv(R)[p, :]
     weight = PRinv @ PRinv.transpose()
 
     # indicator for condition number
-    rcond = np.abs(R[n_targets-1,n_targets-1]) / np.abs(R[0,0])
-    
+    rcond = np.abs(R[n_targets - 1, n_targets - 1]) / np.abs(R[0, 0])
+
     return weight_inv, weight, rcond
 
 
@@ -121,8 +127,8 @@ def check_discrepancy_principle(alpha, fidelity, noise_level, regularizer):
     kappa1 = 0.8
     kappa2 = 1.25
 
-    alpha_stepsize = .5;
-    
+    alpha_stepsize = .5
+
     if fidelity > kappa2 * noise_level:
         # decrease alpha to improve fit
         alpha_new = alpha * (1 - alpha_stepsize * (1 - noise_level / fidelity))
@@ -145,19 +151,17 @@ def reweighted_l21_multi_task(
         max_iter,
         tol,
         verbose=True):
-    
-    n_features = A.shape[1]
-    n_targets = Y.shape[1]
-
+    fidelity_at_last_alpha = True
     if noise_level:
-        fidelity_at_last_alpha = False # internal variable for alpha adjustment
-    
+        fidelity_at_last_alpha = False  # internal variable for alpha adjustment
+
     # initial weights
     try:
         weight_inv, weight, _ = _compute_weight(Z)
     except:
         raise ValueError("Singular weight matrix in initial step. "
-              "Choose different initialization, or consider using the OrthogonallyWeightedL21Continuation algorithm.")
+                         "Choose different initialization, or consider using the OrthogonallyWeightedL21Continuation "
+                         "algorithm.")
 
     # initialize alpha if not specified
     if not alpha:
@@ -167,6 +171,7 @@ def reweighted_l21_multi_task(
     # initial step size
     reference_step_size = alpha / (np.linalg.norm(A, 2) ** 2)
     step_size = reference_step_size
+    rcond = np.inf
 
     fidelity = _fidelity(A, Z, Y)
     regularizer = _regularizer(Z, weight)
@@ -179,20 +184,19 @@ def reweighted_l21_multi_task(
         weight_inv_old = weight_inv
 
         # update Z
-        Lam = np.zeros(weight.shape)
         reweighted_row_norms = _reweighted_row_norms(Z, weight)
 
         nonzero_rows = np.nonzero(np.squeeze(reweighted_row_norms))[0]
         nz_row_norms = reweighted_row_norms[nonzero_rows, :]
         Lam = Z[nonzero_rows, :].transpose() @ (Z[nonzero_rows, :] / nz_row_norms)
 
-        gradZ = (1/alpha) * (A.transpose() @ (A @ Z - Y)) @ weight_inv - Z @ weight @ Lam
+        gradZ = (1 / alpha) * (A.transpose() @ (A @ Z - Y)) @ weight_inv - Z @ weight @ Lam
         Z = Z - step_size * gradZ
         Z = _prox(Z, weight, step_size)
 
         # compute the predicted decrease
-        pred = np.sum(_reweighted_row_inners(Z - Z_old, gradZ, weight)) + \
-            np.sum(_reweighted_row_norms(Z, weight) - _reweighted_row_norms(Z_old, weight))
+        pred = (np.sum(_reweighted_row_inners(Z - Z_old, gradZ, weight)) +
+                np.sum(_reweighted_row_norms(Z, weight) - _reweighted_row_norms(Z_old, weight)))
 
         # functional residual
         obj_res = -pred / step_size
@@ -200,7 +204,7 @@ def reweighted_l21_multi_task(
         # update weights and objective if weight exists
         try:
             weight_inv, weight, rcond = _compute_weight(Z)
-            
+
             fidelity = _fidelity(A, Z, Y)
             regularizer = _regularizer(Z, weight)
             current_objective = _obj(fidelity, regularizer, alpha)
@@ -208,8 +212,8 @@ def reweighted_l21_multi_task(
         except:
             weight = weight_old
             failed_update = True
-            
-        finished = False        
+
+        finished = False
         kappa = 0.001
         if failed_update or (current_objective - old_objective > kappa * pred and obj_res > 1e-14):
             # discard current proximal step (backtracking line-search)
@@ -221,13 +225,13 @@ def reweighted_l21_multi_task(
 
             if pred >= 0 or step_size * rcond < 1e-14:
                 ## error or just return what we have?
-                print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1/rcond))
+                print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1 / rcond))
                 print('Consider using the OrthogonallyWeightedL21Continuation algorithm.')
                 finished = True
         else:
             # proximal step is accepted
 
-            reference_objective = _obj(fidelity, regularizer, alpha);
+            reference_objective = _obj(fidelity, regularizer, alpha)
             if not noise_level and obj_res < tol * reference_objective:
                 # termination criterion is fulfilled
                 finished = True
@@ -263,17 +267,18 @@ def reweighted_l21_multi_task(
 
         if verbose and (k % verbose == 0 or finished):
             support = np.nonzero((Z * Z).sum(axis=1))[0]
-            print('%6d: %3d' % (k, len(support)),
-                  'alpha=%1.1e' % (alpha),
-                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res/reference_objective),
-                  'step=%1.1e' % (step_size / reference_step_size))
+            reference_objective = _obj(fidelity, regularizer, alpha)
+            print(f'{k:6d}: {len(support):3d}',
+                  f'alpha={alpha:1.1e}',
+                  f'fit={fidelity:1.2e} reg={regularizer:1.2f} obj_err={obj_res / reference_objective:1.2e}',
+                  f'step={step_size / reference_step_size:1.1e}')
         if finished:
             break
 
     if verbose and rcond <= 1e-3:
-        print('Estimated condition number of Z: %1.2e, stagnation likely' % (1/rcond))
+        print('Estimated condition number of Z: %1.2e, stagnation likely' % (1 / rcond))
         print('Consider different initialization or using the OrthogonallyWeightedL21Continuation algorithm.')
-        
+
     return Z
 
 
@@ -285,10 +290,10 @@ def _compute_weight_gamma(Z, gamma):
     weight_inv = gamma * I + (1-gamma) * Z.transpose() @ Z
     weight = linalg.inv(weight_inv)
     """
-    
+
     n_targets = Z.shape[1]
     I = np.eye(n_targets, n_targets)
-    weight_inv = gamma * I + (1-gamma) * Z.transpose() @ Z
+    weight_inv = gamma * I + (1 - gamma) * Z.transpose() @ Z
 
     try:
         L = linalg.cholesky(weight_inv)
@@ -297,11 +302,11 @@ def _compute_weight_gamma(Z, gamma):
         # indicator for condition number
         rcond = (np.min(np.diag(L)) / np.max(np.diag(L))) ** 2
     except:
-        U, s, V = linalg.svd(weight_inv, full_matrices=False)
+        U, s, Vh = linalg.svd(weight_inv, full_matrices=False)
         weight = U @ np.diag(1 / s) @ U.transpose()
         rcond = np.min(s) / np.max(s)
         print(s)
-    
+
     return weight_inv, weight, rcond
 
 
@@ -309,7 +314,7 @@ def _gamma_continuation_schedule(gamma, gamma_tol):
     """
     provide the next continuation parameter
     """
-    #return max(gamma_tol, gamma - 0.1)
+    # return max(gamma_tol, gamma - 0.1)
     return max(gamma_tol, gamma / np.sqrt(10))
 
 
@@ -324,13 +329,9 @@ def reweighted_l21_multi_task_continuation(
         gamma_0=1,
         gamma_tol=1e-6,
         verbose=True):
-    
-    n_features = A.shape[1]
-    n_targets = Y.shape[1]
-
     # initial gamma
     gamma = gamma_0
-    
+
     # initial weights
     weight_inv, weight, _ = _compute_weight_gamma(Z, gamma)
 
@@ -342,7 +343,7 @@ def reweighted_l21_multi_task_continuation(
     # initial step size
     reference_step_size = alpha / (np.linalg.norm(A, 2) ** 2)
     step_size = reference_step_size
-    
+
     fidelity = _fidelity(A, Z, Y)
     regularizer = _regularizer(Z, weight)
     current_objective = _obj(fidelity, regularizer, alpha)
@@ -359,14 +360,14 @@ def reweighted_l21_multi_task_continuation(
         nonzero_rows = np.nonzero(np.squeeze(reweighted_row_norms))[0]
         nz_row_norms = reweighted_row_norms[nonzero_rows, :]
         Lam = (1 - gamma) * Z[nonzero_rows, :].transpose() @ (Z[nonzero_rows, :] / nz_row_norms)
-        
-        gradZ = (1/alpha) * (A.transpose() @ (A @ Z - Y)) @ weight_inv - Z @ weight @ Lam
+
+        gradZ = (1 / alpha) * (A.transpose() @ (A @ Z - Y)) @ weight_inv - Z @ weight @ Lam
         Z = Z - step_size * gradZ
         Z = _prox(Z, weight, step_size)
 
         # compute the predicted decrease
-        pred = np.sum(_reweighted_row_inners(Z - Z_old, gradZ, weight)) + \
-            np.sum(_reweighted_row_norms(Z, weight) - _reweighted_row_norms(Z_old, weight))
+        pred = (np.sum(_reweighted_row_inners(Z - Z_old, gradZ, weight)) +
+                np.sum(_reweighted_row_norms(Z, weight) - _reweighted_row_norms(Z_old, weight)))
 
         # functional residual
         obj_res = -pred / step_size
@@ -391,13 +392,13 @@ def reweighted_l21_multi_task_continuation(
             weight_inv = weight_inv_old
 
             if pred >= 0 or step_size * rcond < 1e-14:
-                print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1/rcond))
+                print('Failed to converge: pred=%1.2e, stepsize=%1.2e, condest=%1.2e.' % (pred, step_size, 1 / rcond))
                 finished = True
         else:
             # proximal step is accepted
             gamma_update = False
 
-            reference_objective = _obj(fidelity, regularizer, alpha);
+            reference_objective = _obj(fidelity, regularizer, alpha)
             if not noise_level and obj_res < tol * reference_objective:
                 # termination criterion is fulfilled
                 # check if we need to decrease gamma
@@ -418,7 +419,7 @@ def reweighted_l21_multi_task_continuation(
                     else:
                         gamma = _gamma_continuation_schedule(gamma, gamma_tol)
                         gamma_update = True
-                else: 
+                else:
 
                     reference_step_size *= alpha_new / alpha
                     alpha = alpha_new
@@ -433,7 +434,7 @@ def reweighted_l21_multi_task_continuation(
                 elif (current_objective - old_objective) / pred < 1 / 3:
                     step_size = step_size * (2 / 3)
 
-            if gamma_update: 
+            if gamma_update:
                 # gamma was updated: update weights and objective
                 weight_inv, weight, rcond = _compute_weight_gamma(Z, gamma)
 
@@ -442,15 +443,13 @@ def reweighted_l21_multi_task_continuation(
 
         if verbose and (k % verbose == 0 or finished):
             support = np.nonzero((Z * Z).sum(axis=1))[0]
+            reference_objective = _obj(fidelity, regularizer, alpha)
             print('%6d: %3d' % (k, len(support)),
                   'alpha=%1.1e gamma=%1.1e' % (alpha, gamma),
-                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res/reference_objective),
+                  'fit=%1.2e reg=%1.2f obj_err=%1.2e' % (fidelity, regularizer, obj_res / reference_objective),
                   'step=%1.1e' % (step_size / reference_step_size))
 
         if finished:
             break
-        
+
     return Z
-
-
-

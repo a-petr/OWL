@@ -1,10 +1,10 @@
-# Authors: Armenak Petrosyan <apetrosyan3@gatech.edu>
+# Authors: Armenak Petrosyan <arm.petros@gmail.com>
 #          Konstantin Pieper <pieperk@ornl.gov>
 #          Hoang Tran <tranha@ornl.gov>
 
 
 import numpy as np
-import OWL.utils as ut
+import utils as ut
 
 
 class OrthogonallyWeightedL21:
@@ -127,8 +127,8 @@ if __name__ == "__main__":
 
     A = np.array([[0.2, 1., 0., 0., 0.],
                   [0.2, 0., 1., 0., 0.],
-                  [0., 0., 0., 1., 0.],
-                  [0., 0., 0., 0., 1.]])
+                  [0.,  0., 0., 1., 0.],
+                  [0.,  0., 0., 0., 1.]])
 
     X = np.array([[0., 0., 0., 1., 1.],
                   [0., 0., 0., 1., -1.]]).transpose()
